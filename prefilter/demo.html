@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+        <title>Reflection Probe with postprocesses</title>
+
+        <script src="https://code.jquery.com/pep/0.4.2/pep.min.js"></script>
+        <script src="https://preview.babylonjs.com/babylon.js"></script>
+        <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+        <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+        <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+        <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+        <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+        <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+        <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="PrefilteredReflectionProbe.js"></script>
+
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+        </style>
+    </head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+
+
+//-----------------------------------------------------------------------------------------------------------------
+
+var canvas = document.getElementById("renderCanvas")
+
+var createScene = function () {
+    console.log("in cscene")
+    var scene = new BABYLON.Scene(engine)
+    var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene)
+    camera.setTarget(BABYLON.Vector3.Zero())
+    camera.minZ = 0.01
+    camera.attachControl(canvas, true)
+    var light = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -0.75, 0), scene)
+    light.diffuse = new BABYLON.Color3(1.0,0.9,0.8)
+    light.specular = light.diffuse.copyFrom(light.specular)
+    light.position = new BABYLON.Vector3(30, 22.5, 0)
+    light.radius = 0.1
+    light.intensity = 2.0
+
+    var meshes = []
+
+// Sky
+    var skyMaterial = new BABYLON.SkyMaterial("skyMaterial", scene)
+    skyMaterial.backFaceCulling = false
+    skyMaterial.useSunPosition = true
+    skyMaterial.sunPosition = new BABYLON.Vector3.Zero()
+    skyMaterial.sunPosition.copyFrom(light.position)
+    var skybox = BABYLON.Mesh.CreateBox("skyBox", 1000.0, scene)
+    skybox.material = skyMaterial
+    skybox.dontreflect = true //means do not use new scene.environmentTexture as reflectionTexture
+    skybox.noshadow = true //means do not cast shadow
+    meshes.push(skybox)
+
+// Meshes
+    var sphere1 = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene)
+    sphere1.position.x = -3
+    sphere1.position.y = 1
+    var sp1mat = new BABYLON.PBRMaterial('sp1', scene)
+    sp1mat.albedoColor = BABYLON.Color3.Red()
+    sp1mat.roughness = 0.1
+    sp1mat.metallic = 1.0
+    sphere1.material = sp1mat
+    meshes.push(sphere1)
+
+    var sphere2 = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene)
+    sphere2.position.x = 3
+    sphere2.position.y = 1
+    var sp2mat = new BABYLON.PBRMaterial('sp3', scene)
+    sp2mat.albedoColor = BABYLON.Color3.Green()
+    sp2mat.roughness = 0.33
+    sp2mat.metallic = 0.0
+    sphere2.material = sp2mat
+    meshes.push(sphere2)
+
+    var sphere3 = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene)
+    sphere3.position.x = 0
+    sphere3.position.y = 1
+    sphere3.position.z = 3
+    var sp3mat = new BABYLON.PBRMaterial('sp3', scene)
+    sp3mat.albedoColor = BABYLON.Color3.Blue()
+    sp3mat.roughness = 0.8
+    sp3mat.metallic = 0.0
+    sphere3.material = sp3mat
+    meshes.push(sphere3)
+
+    var sphereR = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene)
+    sphereR.position.y = 1
+    var rmat = new BABYLON.PBRMaterial('sp-refl', scene)
+    rmat.roughness = 0.0
+    rmat.metallic = 1.0
+    sphereR.material = rmat
+    sphereR.noreflection //means it is not on the reflection
+    meshes.push(sphereR)
+
+    var brickTexture = new BABYLON.BrickProceduralTexture("brick", 512, scene)
+    brickTexture.numberOfBricksHeight = 8
+    brickTexture.numberOfBricksWidth = 8
+    brickTexture.uScale = 4
+    brickTexture.vScale = 4
+    var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 50, height: 50 }, scene)
+    ground.position.y = -1
+    var gmat = new BABYLON.PBRMaterial('ground', scene)
+    gmat.albedoTexture = brickTexture
+    gmat.roughness = 0.8
+    ground.material = gmat
+    ground.noshadow = true //means do not cast shadow
+    ground.dontreflect = true //means do not use new scene.environmentTexture as reflectionTexture
+    meshes.push(ground)
+
+// Shadow
+    var shadowGenerator = new BABYLON.ShadowGenerator(256, light)
+    shadowGenerator.usePercentageCloserFiltering = true
+    shadowGenerator.bias = 0.0001
+    meshes.forEach(function(mesh){
+        if (!mesh.noshadow) {
+            shadowGenerator.addShadowCaster(mesh)
+        }
+        mesh.receiveShadows = true
+    })
+        
+
+// Animation
+    var a = 0
+    scene.registerBeforeRender(() => {
+        a += 0.01
+        sphere1.position.x = Math.cos(a) * 3
+        sphere1.position.z = Math.sin(a) * 3
+        sphere2.position.x = Math.cos(a+2) * 3
+        sphere2.position.z = Math.sin(a+2) * 3
+        sphere3.position.x = Math.cos(a+4) * 3
+        sphere3.position.z = Math.sin(a+4) * 3
+
+    })
+
+// GUI & control
+    var gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("GUI", true, scene)
+    scene.gui = gui
+    var text1 = new BABYLON.GUI.TextBlock()
+    text1.text = "Press F10 to refresh prefiltered reflection!"
+    text1.color = "white"
+    text1.fontSize = 24
+    text1.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+    text1.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
+    text1.paddingLeft = '10px'
+    text1.paddingTop = '10px'
+    gui.addControl(text1)
+
+    var itext = new BABYLON.GUI.TextBlock()
+    itext.text = ""
+    itext.color = "yellow"
+    itext.fontSize = 24
+    itext.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+    itext.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
+    itext.paddingLeft = '10px'
+    itext.paddingTop = '40px'
+    gui.addControl(itext)
+
+    var pfrp = new PrefilteredReflectionProbe(scene, 512, meshes)
+    window.pfrp = pfrp
+    scene.environmentTexture = pfrp.secondaryReflection.clone()
+
+    addEventListener('keyup', (e) => {
+        kc = e.key
+        if (kc=='F10' && !pfrp.isBusy) {
+            itext.text = 'Prefiltering started, please wait...'
+            setTimeout(() => {
+                pfrp.render().then((newTexture) => {
+                    if (self.scene.environmentTexture) {
+                        self.scene.environmentTexture
+                    }
+                    self.scene.environmentTexture = newTexture
+                    meshes.forEach((mesh) => {
+                        if (!mesh.dontreflect) {
+                            mesh.material.reflectionTexture = newTexture
+                        }
+                    })
+                    pfrp.secondaryReflection.dispose()
+                    pfrp.secondaryReflection = newTexture
+                    console.log("New env ready", newTexture)
+                    itext.text = 'Prefiltering took '+pfrp.tTime.toFixed(2)+' ms'
+                })
+            }, 200)
+        }
+        if (kc=='F9') {
+            scene.isInspector = !scene.isInspector
+            if (scene.isInspector) {
+                scene.debugLayer.show()
+            } else {
+                scene.debugLayer.hide()
+            }
+        }
+    })
+
+
+return scene
+}
+
+var engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true })
+var scene = createScene()
+
+engine.runRenderLoop(function () {
+    if (scene) {
+        scene.render()
+    }
+})
+
+// Resize
+window.addEventListener("resize", function () {
+    engine.resize()
+})
+
+</script>
+</body>
+</html>
