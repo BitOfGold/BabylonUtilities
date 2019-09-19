@@ -2,6 +2,7 @@ class PrefilteredReflectionProbe {
 
 constructor(scene, size=512, renderList=[], options = {}) {
     this.scene = scene
+    this.engine = scene._engine
     this.size = size
     this.options = options
     this.isBusy = false
@@ -17,8 +18,8 @@ constructor(scene, size=512, renderList=[], options = {}) {
     this.dummymesh.material = new BABYLON.PBRMaterial("pbrdummy", this.scene)
 
     // Secondary reflection is a dummy texture
-    this.secondaryReflection = new BABYLON.EquiRectangularCubeTexture("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAIAAAA8r+mnAAABhWlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpX5UFKwg4pChOlkQFXHUKhShQqgVWnUwufQLmjQkKS6OgmvBwY/FqoOLs64OroIg+AHi4uqk6CIl/i8ptIj14Lgf7+497t4BQrXINKttHNB020zEomIqvSoGXtGJIPowgG6ZWcacJMXRcnzdw8fXuwjPan3uz9GjZiwG+ETiWWaYNvEG8fSmbXDeJw6xvKwSnxOPmXRB4keuKx6/cc65LPDMkJlMzBOHiMVcEytNzPKmRjxFHFY1nfKFlMcq5y3OWrHM6vfkLwxm9JVlrtMcRgyLWIIEEQrKKKAIGxFadVIsJGg/2sI/5PolcinkKoCRYwElaJBdP/gf/O7Wyk5OeEnBKND+4jgfI0BgF6hVHOf72HFqJ4D/GbjSG/5SFZj5JL3S0MJHQO82cHHd0JQ94HIHGHwyZFN2JT9NIZsF3s/om9JA/y3Qteb1Vt/H6QOQpK7iN8DBITCao+z1Fu/uaO7t3zP1/n4AFENygT82rs8AAAAJcEhZcwAALiMAAC4jAXilP3YAAAAHdElNRQfjCQwQJQmWy9V2AAAAGXRFWHRDb21tZW50AENyZWF0ZWQgd2l0aCBHSU1QV4EOFwAAACpJREFUCNdjDNTX//T3Hx8zExrJhFWUj5mJ5T273HsGBgYWBjSSiQEHAAAHCx2CO4UrdwAAAABJRU5ErkJggg==", this.scene, 512);
-   
+    this.secondaryReflection = new BABYLON.EquiRectangularCubeTexture("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAABmklEQVQozzWSwZEbQQwDAZCzK52cicNxEM6/zpY0O0PCD5X72Y9+NX/++g3Aho3/mCCBgEWA/NgGGkiQbZfhdgNtmBR5p48u0Y5EyOQGYaTELrt7G0W1iIiDPL0edUXXjtvW6Ugay86gGyYJUZIUjLgTj1o/rhl7ztRbt50xAFTloAEjIxSQEBHSXfi6+osz/IpK84EQCaJzuI2OHMpAhEIhneh7+YYtz/BobyRJZiMPbwCZyIMKUUpytO+ogR1Y4dm4RHdo0XnUZOPkOBSZVji6sq+z3qOXWPJCT2GVGKg8a3LXueI+OAA1o7fWK/bf8Ay2uVkv7WclgZVHvXnN24VzeGgFyX1pPrWe9JYANfvF61vBXStHv0c/z41zdeIQwDWxXuwnVRRJo2dc3yBGM0e/h+Ywx2o6ZbMu7ItYEBgATS/uP3KHzoy+zujkUoObgtEFb9KQJBoNw1XooirZKwIBCwstoAWTTZECaQNgw0YbxazeQBKAP0easADYRBMCEDQIu3tN7V3b+Kzdn0z702M3XHIJCJBA7fUPC5MmAq/DE8UAAAAASUVORK5CYII=", this.scene, 16);
+    this.secondaryReflection.updateSamplingMode(BABYLON.Texture.TRILINEAR_SAMPLINGMODE)
 }
 
 async _sleep(m) { return new Promise(r => setTimeout(r, m)) }
@@ -225,7 +226,7 @@ _createCascade() {
         if (size > 1) {
             rppp.onAfterRender = (effect) => {
                 let nlev = cascade[rppp.level.level + 1]
-                engine._gl.readPixels(0, 0, nlev.size, nlev.size, engine._gl.RGBA, engine._gl.UNSIGNED_BYTE, nlev.data[this.rp._rface]);
+                this.engine._gl.readPixels(0, 0, nlev.size, nlev.size, engine._gl.RGBA, engine._gl.UNSIGNED_BYTE, nlev.data[this.rp._rface]);
             }
         }
         this.scene.activeCamera.detachPostProcess(rppp)

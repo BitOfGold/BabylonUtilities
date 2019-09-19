@@ -183,9 +183,6 @@ var createScene = function () {
             itext.text = 'Prefiltering started, please wait...'
             setTimeout(() => {
                 pfrp.render().then((newTexture) => {
-                    if (self.scene.environmentTexture) {
-                        self.scene.environmentTexture
-                    }
                     self.scene.environmentTexture = newTexture
                     meshes.forEach((mesh) => {
                         if (!mesh.dontreflect) {
