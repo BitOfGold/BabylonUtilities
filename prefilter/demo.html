@@ -75,7 +75,7 @@ var createScene = function () {
     sphere1.position.y = 1
     var sp1mat = new BABYLON.PBRMaterial('sp1', scene)
     sp1mat.albedoColor = BABYLON.Color3.Red()
-    sp1mat.roughness = 0.1
+    sp1mat.roughness = 0.25
     sp1mat.metallic = 1.0
     sphere1.material = sp1mat
     meshes.push(sphere1)
@@ -85,7 +85,7 @@ var createScene = function () {
     sphere2.position.y = 1
     var sp2mat = new BABYLON.PBRMaterial('sp3', scene)
     sp2mat.albedoColor = BABYLON.Color3.Green()
-    sp2mat.roughness = 0.33
+    sp2mat.roughness = 0.25
     sp2mat.metallic = 0.0
     sphere2.material = sp2mat
     meshes.push(sphere2)
@@ -95,7 +95,7 @@ var createScene = function () {
     sphere3.position.y = 1
     sphere3.position.z = 3
     var sp3mat = new BABYLON.PBRMaterial('sp3', scene)
-    sp3mat.albedoColor = BABYLON.Color3.Blue()
+    sp3mat.albedoColor = BABYLON.Color3.White()
     sp3mat.roughness = 0.8
     sp3mat.metallic = 0.0
     sphere3.material = sp3mat
@@ -183,11 +183,11 @@ var createScene = function () {
             itext.text = 'Prefiltering started, please wait...'
             setTimeout(() => {
                 pfrp.render().then((newTexture) => {
-                    self.scene.environmentTexture = newTexture
+                    scene.environmentTexture = newTexture
                     meshes.forEach((mesh) => {
-                        if (!mesh.dontreflect) {
+                        //if (!mesh.dontreflect) {
                             mesh.material.reflectionTexture = newTexture
-                        }
+                        //}
                     })
                     pfrp.secondaryReflection.dispose()
                     pfrp.secondaryReflection = newTexture

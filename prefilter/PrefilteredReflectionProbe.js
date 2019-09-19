@@ -2,12 +2,13 @@ class PrefilteredReflectionProbe {
 
 constructor(scene, size=512, renderList=[], options = {}) {
     this.scene = scene
-    this.engine = scene._engine
+    this.engine = scene.getEngine()
     this.size = size
     this.options = options
     this.isBusy = false
     this.phase = 1
     this.renderList = renderList
+    self = this
 
     this.dummymesh = BABYLON.MeshBuilder.CreateBox('dummy', {
             width: 0.001,
@@ -15,11 +16,10 @@ constructor(scene, size=512, renderList=[], options = {}) {
             depth: 0.001,
             updatable: false
         }, this.scene)
+    this.dummymesh.alwaysSelectAsActiveMesh = true
     this.dummymesh.material = new BABYLON.PBRMaterial("pbrdummy", this.scene)
-
-    // Secondary reflection is a dummy texture
-    this.secondaryReflection = new BABYLON.EquiRectangularCubeTexture("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAABmklEQVQozzWSwZEbQQwDAZCzK52cicNxEM6/zpY0O0PCD5X72Y9+NX/++g3Aho3/mCCBgEWA/NgGGkiQbZfhdgNtmBR5p48u0Y5EyOQGYaTELrt7G0W1iIiDPL0edUXXjtvW6Ugay86gGyYJUZIUjLgTj1o/rhl7ztRbt50xAFTloAEjIxSQEBHSXfi6+osz/IpK84EQCaJzuI2OHMpAhEIhneh7+YYtz/BobyRJZiMPbwCZyIMKUUpytO+ogR1Y4dm4RHdo0XnUZOPkOBSZVji6sq+z3qOXWPJCT2GVGKg8a3LXueI+OAA1o7fWK/bf8Ay2uVkv7WclgZVHvXnN24VzeGgFyX1pPrWe9JYANfvF61vBXStHv0c/z41zdeIQwDWxXuwnVRRJo2dc3yBGM0e/h+Ywx2o6ZbMu7ItYEBgATS/uP3KHzoy+zujkUoObgtEFb9KQJBoNw1XooirZKwIBCwstoAWTTZECaQNgw0YbxazeQBKAP0easADYRBMCEDQIu3tN7V3b+Kzdn0z702M3XHIJCJBA7fUPC5MmAq/DE8UAAAAASUVORK5CYII=", this.scene, 16);
-    this.secondaryReflection.updateSamplingMode(BABYLON.Texture.TRILINEAR_SAMPLINGMODE)
+    // Secondary reflection is a dummy texture    
+    this.secondaryReflection = new BABYLON.EquiRectangularCubeTexture("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAABmklEQVQozzWSwZEbQQwDAZCzK52cicNxEM6/zpY0O0PCD5X72Y9+NX/++g3Aho3/mCCBgEWA/NgGGkiQbZfhdgNtmBR5p48u0Y5EyOQGYaTELrt7G0W1iIiDPL0edUXXjtvW6Ugay86gGyYJUZIUjLgTj1o/rhl7ztRbt50xAFTloAEjIxSQEBHSXfi6+osz/IpK84EQCaJzuI2OHMpAhEIhneh7+YYtz/BobyRJZiMPbwCZyIMKUUpytO+ogR1Y4dm4RHdo0XnUZOPkOBSZVji6sq+z3qOXWPJCT2GVGKg8a3LXueI+OAA1o7fWK/bf8Ay2uVkv7WclgZVHvXnN24VzeGgFyX1pPrWe9JYANfvF61vBXStHv0c/z41zdeIQwDWxXuwnVRRJo2dc3yBGM0e/h+Ywx2o6ZbMu7ItYEBgATS/uP3KHzoy+zujkUoObgtEFb9KQJBoNw1XooirZKwIBCwstoAWTTZECaQNgw0YbxazeQBKAP0easADYRBMCEDQIu3tN7V3b+Kzdn0z702M3XHIJCJBA7fUPC5MmAq/DE8UAAAAASUVORK5CYII=", this.scene, 4);
 }
 
 async _sleep(m) { return new Promise(r => setTimeout(r, m)) }
@@ -33,7 +33,6 @@ async render() {
         this._createCascade()
         this._attachCascade(true)
     }
-
     if (this.isBusy) {throw("PrefilteredReflectionProbe is busy right now.")}
     this.isBusy = true
 
@@ -48,7 +47,7 @@ async render() {
 
     let pfTexture = await this._createPrefilteredTexture()
 
-    console.log("Prefiltering finished")
+    console.log("Prefiltering finished.")
 
     this.dummymesh.reflectionTexture = this.secondaryReflection
     this.isBusy = false
@@ -68,7 +67,6 @@ set position(npos) {
 }
 
 _createRP() {
-    console.log("Creating ReflectionProbe...")
     let self = this
 
     if (this.rp) {this.rp.dispose()}
@@ -89,10 +87,33 @@ _createRP() {
         if (f == 0) {
             self.scene.environmentTexture = self.secondaryReflection
             rp.renderList.forEach((mesh) => {
-                if (!mesh.dontreflect) {
-                    mesh.material._rt = mesh.material.reflectionTexture
-                    mesh.material.reflectionTexture = self.secondaryReflection
+                if (f == 0) {
+                    mesh._normal_material = mesh.material
                 }
+                if (!mesh._norefl_material) {
+                    let matnew = mesh._normal_material.clone('nr-' + mesh._normal_material.name, true, true);
+                    if (matnew.subMaterials) {
+                        for (let m = 0; m < matnew.subMaterials.length; m++) {
+                            matnew.subMaterials[m].reflectionTexture = this.secondaryReflection
+                            matnew.subMaterials[m].normalTexture = null
+                            matnew.subMaterials[m].bumpTexture = null
+                            matnew.subMaterials[m].useParallax = false
+                            matnew.subMaterials[m].useParallaxOcclusion = false
+                            matnew.subMaterials[m].forceIrradianceInFragment = false
+                            matnew.subMaterials[m].enableSpecularAntiAliasing = false
+                        }
+                    } else {
+                        matnew.reflectionTexture = this.secondaryReflection
+                        matnew.normalTexture = null
+                        matnew.bumpTexture = null
+                        matnew.useParallax = false
+                        matnew.useParallaxOcclusion = false
+                        matnew.forceIrradianceInFragment = false
+                        matnew.enableSpecularAntiAliasing = false
+                    }
+                    mesh._norefl_material = matnew
+                }
+                mesh.material = mesh._norefl_material
             })
         }
     })
@@ -100,13 +121,10 @@ _createRP() {
     rp._renderTargetTexture.onAfterRenderObservable.add((f) => {
         if (f == 5) {
             if (self.isBusy) {
-                console.log("RP finished phase", self.phase)
                 if (self.phase == 1) {
                     self.phase = 2
                     rp.renderList.forEach((mesh) => {
-                        if (!mesh.dontreflect) {
-                            mesh.material.reflectionTexture = mesh.material._rt
-                        }
+                        mesh.material = mesh._normal_material
                     })
                 }
             } else {
@@ -116,10 +134,11 @@ _createRP() {
     })
     
     this.dummymesh.material.reflectionTexture = this.rp.cubeTexture
+    this.rp.cubeTexture.sphericalPolynomial = this.secondaryReflection.sphericalPolynomial
 }
 
 _createCascade() {
-    console.log("Creating Downscaling cascade...")
+    let self = this
 
     // Renderprobe postprocess (cascaded downscale and blur)
     BABYLON.Effect.ShadersStore["rpblurFragmentShader"] =
@@ -214,6 +233,7 @@ _createCascade() {
         }
         cascade.push(level)
         rppp.level = level
+        rppp.engine = this.engine
         rppp.onApply = (effect) => {
             rppp.level.width = rppp.width
             rppp.level.height = rppp.height
@@ -226,12 +246,12 @@ _createCascade() {
         if (size > 1) {
             rppp.onAfterRender = (effect) => {
                 let nlev = cascade[rppp.level.level + 1]
-                this.engine._gl.readPixels(0, 0, nlev.size, nlev.size, engine._gl.RGBA, engine._gl.UNSIGNED_BYTE, nlev.data[this.rp._rface]);
+                let gl = this.engine._gl
+                gl.readPixels(0, 0, nlev.size, nlev.size, gl.RGBA, gl.UNSIGNED_BYTE, nlev.data[this.rp._rface]);
             }
         }
         this.scene.activeCamera.detachPostProcess(rppp)
         prevrppp = rppp;
-        console.log("Cascade "+i,"scale:",ppscale,"size:",ppsize * ppscale)
         ppscale /= 2;
         if ((ppsize * ppscale) < 1) {
             i = 100
@@ -240,7 +260,6 @@ _createCascade() {
 }
 
 _attachCascade(enable) {
-    console.log("Attaching cascade",enable)
     if (enable) {
         for (let l = 0; l < this.cascade.length;l++) {
             this.rp._renderTargetTexture.addPostProcess(this.cascade[l].pp)
@@ -252,7 +271,6 @@ _attachCascade(enable) {
 }
 
 _savePhase1() {
-    console.log("Phase 1 Cascade:",this.cascade)
     return true
 }
 
@@ -268,24 +286,15 @@ async _createPrefilteredTexture() {
     while (sizenow > 0) {
         mdata[mlevel] = []
         let buffers = this.cascade[mlevel+1].data
-        /*if (mlevel != 0) {
-            let ft = buffers[2]
-            buffers[2] = buffers[3]
-            buffers[3] = ft
-        }*/
         for (let f = 0; f < 6; f++) {
             cbuf = buffers[f]
             let png = await this._bufferToPNGData(cbuf)
             mipmaplist.push(png)
             mdata[mlevel].push(png)
         }
-        
-        //if (mlevel == 0) {
-            let ft = mdata[mlevel][2]
-            mdata[mlevel][2] = mdata[mlevel][3]
-            mdata[mlevel][3] = ft
-        //}
-        console.log("Level "+mlevel+", size "+sizenow+" ready.")
+        let ft = mdata[mlevel][2]
+        mdata[mlevel][2] = mdata[mlevel][3]
+        mdata[mlevel][3] = ft
         sizenow >>= 1
         mlevel++
     }
@@ -293,17 +302,18 @@ async _createPrefilteredTexture() {
         let lowdata = [mdata[mdata.length-2]]
         this.spTex = new BABYLON.RawCubeTexture(this.scene, null, 2)
         await this.spTex.updateRGBDAsync(lowdata)
-        this.spTex.updateSamplingMode(BABYLON.Texture.TRILINEAR_SAMPLINGMODE)
+        this.spTex.gammaSpace = false
+        this.spTex._isRGBD = true
+        this.spTex._prefiltered = true
         let sp = BABYLON.CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.spTex)
         this.spTex.dispose()
 
         this.rawTex = new BABYLON.RawCubeTexture(this.scene, null, this.size)
         await this.rawTex.updateRGBDAsync(mdata, sp, 0.9)
-        this.rawTex.updateSamplingMode(BABYLON.Texture.TRILINEAR_SAMPLINGMODE)
         this.rawTex.gammaSpace = false
         this.rawTex._isRGBD = true
         this.rawTex._prefiltered = true
-        this.rawTex._sphericalReady = true
+        this.rawTex.sphericalPolynomial = sp
         this.rawTex.boundingBoxPosition.copyFrom(this.rp.cubeTexture.boundingBoxPosition)
         this.rawTex.boundingBoxSize = this.rp.cubeTexture.boundingBoxSize.clone()
     } catch(err) {
@@ -311,7 +321,6 @@ async _createPrefilteredTexture() {
         return null
     }
 
-    console.log("Uploading prefiltered data")
     return(this.rawTex)
 }
 
