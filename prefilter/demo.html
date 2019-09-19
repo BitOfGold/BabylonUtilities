@@ -150,52 +150,89 @@ var createScene = function () {
 
     })
 
-// GUI & control
-    var gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("GUI", true, scene)
-    scene.gui = gui
-    var text1 = new BABYLON.GUI.TextBlock()
-    text1.text = "Press F10 to refresh prefiltered reflection!"
-    text1.color = "white"
-    text1.fontSize = 24
-    text1.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
-    text1.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
-    text1.paddingLeft = '10px'
-    text1.paddingTop = '10px'
-    gui.addControl(text1)
-
-    var itext = new BABYLON.GUI.TextBlock()
-    itext.text = ""
-    itext.color = "yellow"
-    itext.fontSize = 24
-    itext.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
-    itext.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
-    itext.paddingLeft = '10px'
-    itext.paddingTop = '40px'
-    gui.addControl(itext)
-
+//Prefiltered reflection Probe
     var pfrp = new PrefilteredReflectionProbe(scene, 512, meshes)
     window.pfrp = pfrp
     scene.environmentTexture = pfrp.secondaryReflection.clone()
 
-    addEventListener('keyup', (e) => {
-        kc = e.key
-        if (kc=='F10' && !pfrp.isBusy) {
+
+// GUI & control
+    var gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("GUI", true, scene)
+    scene.gui = gui
+
+    var panel = new BABYLON.GUI.StackPanel();
+    panel.width = '500px'
+    panel.height = '300px'
+    panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+    panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
+    panel.paddingLeft = '20px'
+    panel.paddingTop = '20px'
+    panel.fontSize = 24
+    gui.addControl(panel)
+
+    var text1 = new BABYLON.GUI.TextBlock()
+    text1.text = 'Press button to refresh prefiltered reflection, F9 to toggle inspector.'
+    text1.color = 'white'
+    text1.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT	
+    text1.textWrapping = true
+    text1.resizeToFit = true
+    panel.paddingBottom = '10px'
+    panel.addControl(text1)
+
+    var button = BABYLON.GUI.Button.CreateSimpleButton("start", "Refresh")
+    button.width = 0.33
+    button.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+    button.height = '40px'
+    button.color = 'white'
+    button.background = '#80A080'
+    panel.addControl(button)
+    button.onPointerClickObservable.add(() => {
+        if (!pfrp.isBusy) {
             itext.text = 'Prefiltering started, please wait...'
             setTimeout(() => {
                 pfrp.render().then((newTexture) => {
                     scene.environmentTexture = newTexture
-                    /*meshes.forEach((mesh) => {
-                        //if (!mesh.dontreflect) {
-                            mesh.material.reflectionTexture = newTexture
-                        //}
-                    })*/
                     pfrp.secondaryReflection.dispose()
                     pfrp.secondaryReflection = newTexture
-                    console.log("New env ready", newTexture)
-                    itext.text = 'Prefiltering took '+pfrp.tTime.toFixed(2)+' ms'
+                    itext.text = `Prefiltering took ${pfrp.tTime.toFixed(2)} ms`
                 })
             }, 200)
         }
+    })
+
+    var itext = new BABYLON.GUI.TextBlock()
+    itext.text = ''
+    itext.color = 'yellow'
+    itext.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+    itext.height = '40px'
+    panel.addControl(itext)
+
+    var rtext = new BABYLON.GUI.TextBlock()
+    rtext.text = 'Test sphere roughness: 0.00'
+    rtext.color = 'lightblue'
+    rtext.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+    rtext.height = '40px'
+    panel.addControl(rtext)
+
+    var slider = new BABYLON.GUI.Slider();
+    slider.minimum = 0
+    slider.maximum = 1.0
+    slider.value = sphereR.material.roughness
+    slider.height = '30px'
+    slider.width = '300px'
+    slider.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+    slider.background = 'white'
+    slider.color = '#808080'
+    slider.isThumbCircle = true
+    slider.onValueChangedObservable.add(function(value) {
+        value = parseFloat(value)
+        sphereR.material.roughness = value
+        rtext.text = `Test sphere roughness: ${value.toFixed(2)}`
+    });
+    panel.addControl(slider);    
+
+    addEventListener('keyup', (e) => {
+        kc = e.key
         if (kc=='F9') {
             scene.isInspector = !scene.isInspector
             if (scene.isInspector) {
