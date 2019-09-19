@@ -106,8 +106,9 @@ var createScene = function () {
     var rmat = new BABYLON.PBRMaterial('sp-refl', scene)
     rmat.roughness = 0.0
     rmat.metallic = 1.0
+    rmat.enableSpecularAntiAliasing = true
     sphereR.material = rmat
-    sphereR.noreflection //means it is not on the reflection
+    sphereR.noreflection = true //means it is not on the reflection
     meshes.push(sphereR)
 
     var brickTexture = new BABYLON.BrickProceduralTexture("brick", 512, scene)
@@ -122,7 +123,6 @@ var createScene = function () {
     gmat.roughness = 0.8
     ground.material = gmat
     ground.noshadow = true //means do not cast shadow
-    ground.dontreflect = true //means do not use new scene.environmentTexture as reflectionTexture
     meshes.push(ground)
 
 // Shadow
@@ -184,11 +184,11 @@ var createScene = function () {
             setTimeout(() => {
                 pfrp.render().then((newTexture) => {
                     scene.environmentTexture = newTexture
-                    meshes.forEach((mesh) => {
+                    /*meshes.forEach((mesh) => {
                         //if (!mesh.dontreflect) {
                             mesh.material.reflectionTexture = newTexture
                         //}
-                    })
+                    })*/
                     pfrp.secondaryReflection.dispose()
                     pfrp.secondaryReflection = newTexture
                     console.log("New env ready", newTexture)

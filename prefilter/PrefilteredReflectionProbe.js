@@ -8,6 +8,9 @@ constructor(scene, size=512, renderList=[], options = {}) {
     this.isBusy = false
     this.phase = 1
     this.renderList = renderList
+    this.position = new BABYLON.Vector3(0, 2, 0)
+    this.illuminationLevel = 1.0
+
     self = this
 
     this.dummymesh = BABYLON.MeshBuilder.CreateBox('dummy', {
@@ -36,6 +39,25 @@ async render() {
     if (this.isBusy) {throw("PrefilteredReflectionProbe is busy right now.")}
     this.isBusy = true
 
+    this.rp._renderTargetTexture.renderList = []
+    this.renderList.forEach((mesh) => {
+        if (!mesh.noreflection) {
+            this.rp._renderTargetTexture.renderList.push(mesh)
+        }
+    })
+
+    this.rp.position.copyFrom(this.position)
+    this.rp.cubeTexture.boundingBoxPosition.copyFrom(this.position)
+    this.rp.cubeTexture.boundingBoxSize = new BABYLON.Vector3(25, 25, 25)
+
+    let reenable = []
+    this.renderList.forEach((mesh) => {
+        if (mesh.noreflection && mesh.isEnabled()) {
+            mesh.setEnabled(false)
+            reenable.push(mesh)
+        }
+    })
+
     // getting downscaled reflections
     this.phase = 1
     this.rp.refreshRate = 1
@@ -43,27 +65,22 @@ async render() {
         await this._sleep(50)
     }
     this.rp.refreshRate = -1
+    reenable.forEach((mesh) => {
+        mesh.setEnabled(true)
+    })
+
     await this._savePhase1()
 
     let pfTexture = await this._createPrefilteredTexture()
 
-    console.log("Prefiltering finished.")
 
     this.dummymesh.reflectionTexture = this.secondaryReflection
     this.isBusy = false
     this.tEnd = performance.now()
     this.tTime = (this.tEnd - this.tStart)
 
+    console.log("Prefiltering finished.")
     return pfTexture
-}
-
-get position() {
-    return this.rp.position
-}
-
-set position(npos) {
-    this.rp.position.copyFrom(npos)
-    this.rp._renderTargetTexture.boundingBoxPosition.copyFrom(npos)
 }
 
 _createRP() {
@@ -76,12 +93,9 @@ _createRP() {
     this.rp = rp
     rp.refreshRate = -1
     rp.invertYAxis = true
-    rp.position = new BABYLON.Vector3(0, 1, 0)
-    rp.cubeTexture.boundingBoxPosition.copyFrom(rp.position)
+    rp.position.copyFrom(this.position)
+    rp.cubeTexture.boundingBoxPosition.copyFrom(this.position)
     rp.cubeTexture.boundingBoxSize = new BABYLON.Vector3(500, 500, 500)
-    this.renderList.forEach(function(mesh){
-        rp.renderList.push(mesh)
-    })
     rp._renderTargetTexture.onBeforeRenderObservable.add((f) => {
         rp._rface = f
         if (f == 0) {
@@ -91,10 +105,12 @@ _createRP() {
                     mesh._normal_material = mesh.material
                 }
                 if (!mesh._norefl_material) {
-                    let matnew = mesh._normal_material.clone('nr-' + mesh._normal_material.name, true, true);
+                    let matnew = mesh._normal_material.clone('reflection-' + mesh._normal_material.name, true, true);
                     if (matnew.subMaterials) {
                         for (let m = 0; m < matnew.subMaterials.length; m++) {
-                            matnew.subMaterials[m].reflectionTexture = this.secondaryReflection
+                            if (matnew.subMaterials[m].reflectionTexture) {
+                                matnew.subMaterials[m].reflectionTexture = this.secondaryReflection
+                            }
                             matnew.subMaterials[m].normalTexture = null
                             matnew.subMaterials[m].bumpTexture = null
                             matnew.subMaterials[m].useParallax = false
@@ -103,7 +119,9 @@ _createRP() {
                             matnew.subMaterials[m].enableSpecularAntiAliasing = false
                         }
                     } else {
-                        matnew.reflectionTexture = this.secondaryReflection
+                        if (matnew.reflectionTexture) {
+                            matnew.reflectionTexture = this.secondaryReflection
+                        }
                         matnew.normalTexture = null
                         matnew.bumpTexture = null
                         matnew.useParallax = false
@@ -152,6 +170,7 @@ _createCascade() {
     
     //Parameters
     uniform float fromUp;
+    uniform float illuminationLevel;
     uniform vec2 screenSize;
     uniform sampler2D upSampler;
 
@@ -170,7 +189,7 @@ _createCascade() {
     }
 
     vec3 getHDRPixel(sampler2D s) {
-        vec3 color = texture2D(s, vUV).rgb;
+        vec3 color = texture2D(s, vUV).rgb * vec3(illuminationLevel);
         return(color);
     }
 
@@ -239,6 +258,7 @@ _createCascade() {
             rppp.level.height = rppp.height
             effect.setFloat("fromUp", prevrppp ? 1.0 : 0.0);
             effect.setFloat2("screenSize", rppp.width, rppp.height);
+            effect.setFloat("illuminationLevel", this.illuminationLevel);
             if (prevrppp) {
                 effect.setTextureFromPostProcess("upSampler", prevrppp)
             }
@@ -306,9 +326,11 @@ async _createPrefilteredTexture() {
         this.spTex._isRGBD = true
         this.spTex._prefiltered = true
         let sp = BABYLON.CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.spTex)
+        //sp.scaleInPlace(this.illuminationLevel)
         this.spTex.dispose()
 
         this.rawTex = new BABYLON.RawCubeTexture(this.scene, null, this.size)
+        this.rawTex.name = 'prefilteredReflection'
         await this.rawTex.updateRGBDAsync(mdata, sp, 0.9)
         this.rawTex.gammaSpace = false
         this.rawTex._isRGBD = true
