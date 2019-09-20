@@ -106,7 +106,7 @@ var createScene = function () {
     let panel = ogui.panel
 
     var text1 = new BABYLON.GUI.TextBlock()
-    text1.text = 'Press button to refresh prefiltered reflection, F9 to toggle inspector.'
+    text1.text = 'Press button here:'
     text1.color = 'white'
     text1.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT	
     text1.textWrapping = true
@@ -114,15 +114,18 @@ var createScene = function () {
     panel.paddingBottom = '10px'
     panel.addControl(text1)
 
-    var button = BABYLON.GUI.Button.CreateSimpleButton("start", "Refresh")
+    let bcount = 0
+    var button = BABYLON.GUI.Button.CreateSimpleButton("start", "Button")
     button.width = 0.33
     button.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
     button.height = '40px'
+    button.width = '120px'
     button.color = 'white'
     button.background = '#80A080'
     panel.addControl(button)
     button.onPointerClickObservable.add(() => {
-        console.log("click!")
+        bcount++
+        itext.text = `Button pressed ${bcount} times.`
     })
 
     var itext = new BABYLON.GUI.TextBlock()
@@ -133,7 +136,7 @@ var createScene = function () {
     panel.addControl(itext)
 
     var rtext = new BABYLON.GUI.TextBlock()
-    rtext.text = 'Test sphere roughness: 0.00'
+    rtext.text = 'Test value: 0.00'
     rtext.color = 'lightblue'
     rtext.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
     rtext.height = '40px'
@@ -151,10 +154,9 @@ var createScene = function () {
     slider.isThumbCircle = true
     slider.onValueChangedObservable.add(function(value) {
         value = parseFloat(value)
-        rtext.text = `Test sphere roughness: ${value.toFixed(2)}`
+        rtext.text = `Test value: ${value.toFixed(2)}`
     });
     panel.addControl(slider)
-
 
     return scene
 }
