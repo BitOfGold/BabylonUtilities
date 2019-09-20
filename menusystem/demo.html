@@ -3,7 +3,7 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-        <title>Overlay BABYLON GUI</title>
+        <title>MenuSystem with BABYLON GUI</title>
 
         <script src="https://code.jquery.com/pep/0.4.2/pep.min.js"></script>
         <script src="https://preview.babylonjs.com/babylon.js"></script>
@@ -15,6 +15,12 @@
         <script src="MenuSystem.js"></script>
 
         <style>
+            @import url('https://fonts.googleapis.com/css?family=Cairo&display=swap');
+
+            html, * {
+                font-family: 'Cairo', sans-serif;
+            }
+
             html, body {
                 overflow: hidden;
                 width: 100%;
@@ -100,15 +106,38 @@ var createScene = function () {
         }
     })
 
-
     let gui = new MenuSystem(scene, {
-        'main': {
+        fontFamily: 'Cairo',
+        titleSize: 72,
+        menuSize: 32,
+        background: 'rgba(0,0,0,0.6)',
+    },
+    {
+        main: {
+            maintitle: {type: 'title', text: 'Main Title'},
+            start: {type: 'menu', text: 'Start!'},
+            settings: {type: 'menu', text: 'Settings'},
+            credits: {type: 'menu', text: 'Credits'}
         },
-        'settings': {
+        settings: {
+            settingstitle: {type: 'title', text: 'Settings'},
         },
-        'play': {
-        }
+        play: {
+            _options: {
+                background: 'rgba(0,0,0,0)'
+            },
+            score: {type: 'text', text: 'SCORE: 0000000'},
+        },
+        credits: {
+            creditstitle: {type: 'title', text: 'Credits'},
+        },
+    }, (eventname, params) => {
+        console.log('Menusystem event:',eventname, params)
     })
+
+    gui.back()
+    window.gui = gui
+
     return scene
 }
 
