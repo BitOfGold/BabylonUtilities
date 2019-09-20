@@ -1,11 +1,12 @@
 class MenuSystem {
 
     // onEventFunction = ('eventname', parameters) => {}
-    constructor(scene, screens, onEventFunction) {
+    constructor(scene, screenList, onEventFunction) {
         this.scene = scene
         var gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("MenuSystem", true, scene)
         this.gui = gui
-        this.screens = screens
+        this.screenList = screenList
+        this.onEventFunction = onEventFunction
         this._build()
     }
 
@@ -25,6 +26,11 @@ class MenuSystem {
     select() {
     }
 
+    // fire back event (exit menu)
+    back() {
+        this.onEventFunction('back')
+    }
+
     // if slider/value is highlighted, turn value up
     turnUp() {
     }
@@ -33,13 +39,31 @@ class MenuSystem {
     turnDown() {
     }
 
-    // fire back event (exit menu)
-    back() {
+    //set text
+    setText(id, text) {
+    }
+
+    //set value
+    setValue(id, value) {
+    }
+
+    getValues() {
     }
 
 //-----------------------------------------------------------------------------
 
     _build() {
+        this._screen = false
+        this._highlighted = false
+        this._screens = {}
+        this._fields = {}
+        for (let sid in this.screenList) {
+            let screen = this.screenList[sid]
+            for (let fid in screen) {
+                let field = screen[fid]
+            }
+        }
+
     }
 
 }
