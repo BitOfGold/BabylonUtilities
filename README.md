@@ -2,6 +2,8 @@
 
 <a href="prefilter/">Prefiltered Reflection Probe</a><br>
 
+<a href="overlaygui/">Overlay GUI: BABYLON GUI on a separate canvas above 3D canvas (for different resolution rendering) <b>[Not working right now]</b></a><br>
+
 <a href="menusystem/">Game menu system / GUI Generator with BABYLON GUI</a><br>
 
 <hr>
