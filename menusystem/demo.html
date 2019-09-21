@@ -34,6 +34,10 @@
                 height: 100%;
                 touch-action: none;
             }
+
+            .pixelated {
+                image-rendering: pixelated;
+            }
         </style>
     </head>
 <body>
@@ -108,29 +112,47 @@ var createScene = function () {
 
     let gui = new MenuSystem(scene, {
         fontFamily: 'Cairo',
+        fontSize: 24,
         titleSize: 72,
-        menuSize: 32,
-        background: 'rgba(0,0,0,0.6)',
-    },
-    {
-        main: {
-            maintitle: {type: 'title', text: 'Main Title'},
-            start: {type: 'menu', text: 'Start!'},
-            settings: {type: 'menu', text: 'Settings'},
-            credits: {type: 'menu', text: 'Credits'}
-        },
-        settings: {
-            settingstitle: {type: 'title', text: 'Settings'},
-        },
-        play: {
-            _options: {
-                background: 'rgba(0,0,0,0)'
+        menuSize: 48,
+        background: 'rgba(0,0,0,0.4)',
+        color: 'white',
+        c: {
+            main: {c:{
+                maintitle: {type: 'title', text: 'Main Title'},
+                mainmenubar : { type: 'stack', width: '66%', height: '30%', top: '35%', align: 'center', c: {
+                    start: {type: 'menu', align: 'center', fontSize: 48, text: 'Start!'},
+                    settings: {type: 'menu', align: 'center', text: 'Settings'},
+                    credits: {type: 'menu', align: 'center', text: 'Credits'}
+                }}
+            }},
+            settings: {c:{
+                settingstitle: {type: 'title', text: 'Settings'},
+            }},
+            play: {
+                background: 'rgba(0,0,0,0)',
+                color: 'white',
+                c: {
+                    aim: {type: 'text', valign: 'center', align: 'center', fontSize: 24, text: '⨯', color: 'rgba(255,255,255,0.4)'},
+                    shieldbar: {type: 'stack', left: '2%', top: '88%', width: '16%', height: '10%', color: '#a8ffa8', c: {
+                        ammo: {type: 'text', align: 'left', fontSize: 72, height: '65px', text: '10%'},
+                        tammo: {type: 'text', align: 'left', text: '🛡 S H I E L D'},
+                    }},
+                    head: {type: 'image', left: '43%', top: '74%', width: '14%', height: '14%', cellWidth: 24, cellHeight: 24, cellId: 0, src: 'assets/face.png'},
+                    healthbar: {type: 'stack', left: '42%', top: '88%', width: '16%', height: '10%', c: {
+                        health: {type: 'text', align: 'center', fontSize: 72, height: '65px', text: '90%'},
+                        thealth: {type: 'text', align: 'center', text: '✚ H E A L T H'},
+                    }},
+                    ammobar: {type: 'stack', left: '82%', top: '88%', width: '16%', height: '10%', color: '#d8d8ff', c: {
+                        ammo: {type: 'text', align: 'right', fontSize: 72, height: '65px', text: '118'},
+                        tammo: {type: 'text', align: 'right', text: '▮◗ A M M O'},
+                    }},
+                }
             },
-            score: {type: 'text', text: 'SCORE: 0000000'},
-        },
-        credits: {
-            creditstitle: {type: 'title', text: 'Credits'},
-        },
+            credits: {c:{
+                creditstitle: {type: 'title', text: 'Credits'},
+            }},
+    }
     }, (eventname, params) => {
         console.log('Menusystem event:',eventname, params)
     })
