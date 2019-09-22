@@ -12,6 +12,7 @@
         <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
         <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
         <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/fontfaceobserver/2.1.0/fontfaceobserver.standalone.js"></script>
         <script src="MenuSystem.js"></script>
 
         <style>
@@ -34,10 +35,6 @@
                 height: 100%;
                 touch-action: none;
             }
-
-            .pixelated {
-                image-rendering: pixelated;
-            }
         </style>
     </head>
 <body>
@@ -54,7 +51,6 @@ var createScene = function () {
     var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene)
     camera.setTarget(BABYLON.Vector3.Zero())
     camera.minZ = 0.01
-    camera.attachControl(canvas, true)
     var light = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -0.75, 0), scene)
     light.diffuse = new BABYLON.Color3(1.0,0.9,0.8)
     light.specular = light.diffuse.copyFrom(light.specular)
@@ -97,10 +93,78 @@ var createScene = function () {
     ground.noshadow = true //means do not cast shadow
     meshes.push(ground)
 
+    let gui = new MenuSystem(scene, {
+        fontFamily: 'Cairo',
+        fontSize: 32,
+        titleSize: 72,
+        fontStyle: 'normal',
+        fontWeight: 'normal',
+        background: 'rgba(0,0,0,0.4)',
+        color: 'white',
+        selectedColor: 'yellow',
+        shadow: true,
+        c: {
+            main: {c:{
+                maintitle: {type: 'title', text: 'Main Title'},
+                mainmenubar : { type: 'stack', width: '66%', align: 'center', valign: 'center', c: {
+                    start: {type: 'menu', align: 'center', text: 'Start!'},
+                    settings: {type: 'menu', align: 'center', text: 'Settings'},
+                    credits: {type: 'menu', align: 'center', text: 'Credits'}
+                }}
+            }},
+            settings: {c:{
+                settingstitle: {type: 'title', text: 'Settings'},
+                back_settings: {type: 'text', left: '40px', top: '0px', fontSize: 72, text: '🡠', clickable: true, back: true},
+            }},
+            play: {
+                background: 'rgba(0,0,0,0)',
+                color: 'white',
+                c: {
+                    pause: {type: 'text', left: '40px', top: '0px', fontSize: 72, text: '⏸', clickable: true, back: true},
+                    aim: {type: 'text', valign: 'center', align: 'center', fontSize: 24, text: '⨯', shadow: false, color: 'rgba(255,255,255,0.4)'},
+                    shieldbar: {type: 'stack', left: '2%', top: '88%', width: '16%', height: '10%', color: '#a8ffa8', c: {
+                        ammo: {type: 'text', align: 'left', fontStyle: 'italic', fontWeight: 'bold', fontSize: 72, height: '65px', text: '10%', paddingLeft: '-10px'},
+                        tammo: {type: 'text', align: 'left', text: '🛡 S H I E L D', height: '34px'},
+                    }},
+                    head: {type: 'image', left: '43%', top: '74%', width: '14%', height: '14%', cellWidth: 24, cellHeight: 24, cellId: 0, src: 'assets/face.png', pixelated: true, clickable: true},
+                    healthbar: {type: 'stack', left: '42%', top: '88%', width: '16%', height: '10%', c: {
+                        health: {type: 'text', align: 'center', fontStyle: 'italic', fontWeight: 'bold', fontSize: 72, height: '65px', text: '90%'},
+                        thealth: {type: 'text', align: 'center', text: '✚ H E A L T H', height: '34px'},
+                    }},
+                    ammobar: {type: 'stack', left: '82%', top: '88%', width: '16%', height: '10%', color: '#d8d8ff', c: {
+                        ammo: {type: 'text', align: 'right', fontStyle: 'italic', fontWeight: 'bold', fontSize: 72, height: '65px', text: '118 '},
+                        tammo: {type: 'text', align: 'right', text: '▮◗ A M M O', height: '34px'},
+                    }},
+                }
+            },
+            credits: {c:{
+                creditstitle: {type: 'title', text: 'Credits'},
+                back_credits: {type: 'text', left: '40px', top: '0px', fontSize: 72, text: '🡠', clickable: true, back: true},
+            }},
+    }
+    }, (eventname, id, params) => {
+        if (eventname == 'back') {
+            camera.detachControl(canvas, true)
+            gui.screen('main')
+        } else if (eventname == 'click') {
+            if (id == 'start') {
+                camera.attachControl(canvas, true)
+                gui.screen('play')
+            } else if (id == 'settings') {
+                gui.screen('settings')
+            } else if (id == 'credits') {
+                gui.screen('credits')
+            }
+        }
+        console.log('Menusystem event:',eventname, params)
+    })
+
 
     addEventListener('keyup', (e) => {
         kc = e.key
-        if (kc=='F9') {
+        if (kc=='Escape') {
+            gui.back()
+        } else if (kc=='F9') {
             scene.isInspector = !scene.isInspector
             if (scene.isInspector) {
                 scene.debugLayer.show()
@@ -110,54 +174,6 @@ var createScene = function () {
         }
     })
 
-    let gui = new MenuSystem(scene, {
-        fontFamily: 'Cairo',
-        fontSize: 24,
-        titleSize: 72,
-        menuSize: 48,
-        background: 'rgba(0,0,0,0.4)',
-        color: 'white',
-        c: {
-            main: {c:{
-                maintitle: {type: 'title', text: 'Main Title'},
-                mainmenubar : { type: 'stack', width: '66%', height: '30%', top: '35%', align: 'center', c: {
-                    start: {type: 'menu', align: 'center', fontSize: 48, text: 'Start!'},
-                    settings: {type: 'menu', align: 'center', text: 'Settings'},
-                    credits: {type: 'menu', align: 'center', text: 'Credits'}
-                }}
-            }},
-            settings: {c:{
-                settingstitle: {type: 'title', text: 'Settings'},
-            }},
-            play: {
-                background: 'rgba(0,0,0,0)',
-                color: 'white',
-                c: {
-                    aim: {type: 'text', valign: 'center', align: 'center', fontSize: 24, text: '⨯', color: 'rgba(255,255,255,0.4)'},
-                    shieldbar: {type: 'stack', left: '2%', top: '88%', width: '16%', height: '10%', color: '#a8ffa8', c: {
-                        ammo: {type: 'text', align: 'left', fontSize: 72, height: '65px', text: '10%'},
-                        tammo: {type: 'text', align: 'left', text: '🛡 S H I E L D'},
-                    }},
-                    head: {type: 'image', left: '43%', top: '74%', width: '14%', height: '14%', cellWidth: 24, cellHeight: 24, cellId: 0, src: 'assets/face.png'},
-                    healthbar: {type: 'stack', left: '42%', top: '88%', width: '16%', height: '10%', c: {
-                        health: {type: 'text', align: 'center', fontSize: 72, height: '65px', text: '90%'},
-                        thealth: {type: 'text', align: 'center', text: '✚ H E A L T H'},
-                    }},
-                    ammobar: {type: 'stack', left: '82%', top: '88%', width: '16%', height: '10%', color: '#d8d8ff', c: {
-                        ammo: {type: 'text', align: 'right', fontSize: 72, height: '65px', text: '118'},
-                        tammo: {type: 'text', align: 'right', text: '▮◗ A M M O'},
-                    }},
-                }
-            },
-            credits: {c:{
-                creditstitle: {type: 'title', text: 'Credits'},
-            }},
-    }
-    }, (eventname, params) => {
-        console.log('Menusystem event:',eventname, params)
-    })
-
-    gui.back()
     window.gui = gui
 
     return scene

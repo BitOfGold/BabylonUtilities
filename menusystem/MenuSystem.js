@@ -1,6 +1,6 @@
 class MenuSystem {
 
-    // onEventFunction = ('eventname', parameters) => {}
+    // onEventFunction = ('eventname', 'field_id', parameters) => {}
     constructor(scene, nodes, onEventFunction) {
         this.scene = scene
         var gui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("MenuSystem", true, scene)
@@ -24,6 +24,7 @@ class MenuSystem {
                 screen.isVisible = false
             }
         }
+        this.selectedScreen = name
     }
 
     //highlight next menu option
@@ -39,8 +40,8 @@ class MenuSystem {
     }
 
     // fire back event (exit menu)
-    back() {
-        this.onEventFunction('back')
+    back(id=null) {
+        this.onEventFunction('back', id)
     }
 
     // if slider/value is highlighted, turn value up
@@ -72,11 +73,45 @@ class MenuSystem {
 
 //-----------------------------------------------------------------------------
 
-    _onevent(id, type, e) {
-        console.log('EVENT', id, type, e)
+    _onevent(type, id, e) {
+        let c
+        //console.log('EVENT', type, id, e)
+        if (type == 'enter') {
+            c = this._getSelectable(id)
+        } else if (type == 'up') {
+            c = this._fields[id]
+            if (c.back) {this.back(id)}
+            this.onEventFunction('click', id, e)
+        }
     }
 
-    
+    _getSelectable(id) {
+        let allsel = this._selectable[this.selectedScreen]
+        return allsel[id]
+    }
+
+    _getSelectableN(id) {
+        let elem,prev,next,first,last,found=false
+        let allsel = this._selectable[this.selectedScreen]
+        for (let fid in allsel) {
+            let field = allsel[fid]
+            if (!first) {
+                first = field
+            }
+            if (fid==id) {
+                elem = field
+                if (last) {
+                    prev = last
+                }
+            }
+            last = field
+        }
+        return allsel[id]
+    }
+    _select(id) {
+        let allsel = this._selectable[this.selectedScreen]
+    }
+
     _mixOptions(baseo, addo) {
         let neo = JSON.parse(JSON.stringify(baseo))        
         delete neo.c
@@ -94,6 +129,7 @@ class MenuSystem {
         this._highlighted = false
         this._screens = {}
         this._fields = {}
+        this._selectable = {}
         let firstscreen = false
         for (let sid in this.nodes.c) {
             if (!firstscreen) {firstscreen = sid}
@@ -116,146 +152,85 @@ class MenuSystem {
             pscreen.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
             this.gui.addControl(pscreen)
             this._screens[sid] = pscreen
-
+            this._selectable[sid] = {}
+            this._sid = sid
             this._buildControls(pscreen, screen.c, _options)
         }
         this.screen(firstscreen)
     }
 
-    _buildControls(parent, list, _options) {
-        let c
+    _buildControls(parent, list, options) {
+        let c, _options
         for (let fid in list) {
             let field = list[fid]
+            _options = this._mixOptions(options, field)
             switch(field.type) {
                 case 'title':
-                    console.log('title');
                     c = new BABYLON.GUI.TextBlock()
                     c.type = field.type
                     c.text = field.text;
+                    this._controlSetTextAlign(c, _options)
+                    this._controlSetFieldOptions(c, field)
                     c.textVerticalAlignment	= BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
-                    c.fontFamily = this.options.fontFamily
-                    c.fontSize = this.options.titleSize
-                    if (field.color) {
-                        c.color = field.color
-                    }
-                    if (field.background) {
-                        c.background = field.background
-                    }
+                    this._controlSetTextOptions(c, _options)
+                    c.fontSize = _options.titleSize
                     parent.addControl(c)
                     this._fields[fid] = c
                     break;
                 case 'text':
                 case 'menu':
-                    console.log(field.type)
                     c = new BABYLON.GUI.TextBlock()
                     c.type = field.type
                     c.text = field.text
-                    if (field.height) {
-                        c.height = field.height
-                    } else {
+                    this._controlSetFieldOptions(c, field)
+                    if (!field.height) {
                         c.resizeToFit = true
                     }
-                    if (field.left) {c.left = field.left}
-                    if (field.top) {c.top = field.top}
-                    if (field.align == 'center') {
-                        c.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER
-                        c.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER
-                    } else if (field.align == 'right') {
-                        c.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT
-                        c.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT
-                    } else {
-                        c.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
-                        c.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
-                    }                    
-                    if (field.valign == 'top') {
-                        c.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
-                        c.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
-                    } else {
-                        c.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER
-                        c.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER
-                    }
-                    c.fontFamily = this.options.fontFamily
-                    c.fontSize = field.fontSize ? field.fontSize : this.options.fontSize
-                    if (field.color) {
-                        c.color = field.color
-                    }
-                    if (field.background) {
-                        c.background = field.background
-                    }
+                    this._controlSetAlign(c, _options)
+                    this._controlSetTextAlign(c, _options)
+                    this._controlSetTextOptions(c, _options)
                     if (field.type == 'menu') {
-                        c.isPointerBlocker = true 
-                        c.onPointerEnterObservable.add((e) => {
-                            this._onevent(fid, 'enter', e)
-                        });
-                        c.onPointerOutObservable.add((e) => {
-                            this._onevent(fid, 'out', e)
-                        })
-                        c.onPointerUpObservable.add((e) => {
-                            this._onevent(fid, 'up', e)
-                        })
+                        this._controlSetEvents(c, fid)
+                        this._selectable[this._sid][fid] = c
+                    } else if (field.clickable) {
+                        this._controlSetEvents(c, fid)
                     }
                     parent.addControl(c)
                     this._fields[fid] = c
                     break;
                 case 'image':
-                    console.log('image')
                     c = new BABYLON.GUI.Image("image-"+fid, field.src);
                     c.type = field.type
                     c.stretch = BABYLON.GUI.Image.STRETCH_UNIFORM
-                    if (field.width) {c.width = field.width}
-                    if (field.height) {c.height = field.height}
-                    c.left = field.left ? field.left : 0
-                    c.top = field.top ? field.top : 0
-                    if (field.align == 'center') {
-                        c.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER
-                    } else {
-                        c.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
-                    }                    
-                    if (field.valign == 'center') {
-                        c.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER
-                    } else {
-                        c.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
-                    }
                     if (field.cellWidth || field.cellHeight) {
                         c.cellWidth = field.cellWidth
                         c.cellHeight = field.cellHeight
                         c.cellId = field.cellId
                     }
-                    console.log(c)
+                    if (field.pixelated) {
+                        c.pixelated = true
+                    }
+                    this._controlSetFieldOptions(c, field)
+                    this._controlSetAlign(c, _options)
+                    if (field.clickable) {
+                        this._controlSetEvents(c, fid)
+                    }
                     parent.addControl(c)
                     this._fields[fid] = c
                     break;
                case 'stack':
-                    console.log('stack')
-                    let stack = new BABYLON.GUI.StackPanel()
-                    stack.type = field.type
-                    stack.isVertical = true
-                    if (field.align == 'center') {
-                        stack.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER
-                    } else if (field.align == 'right') {
-                        stack.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT
+               case 'scroll':
+                    if (field.type == 'stack') {
+                        c = new BABYLON.GUI.StackPanel()
                     } else {
-                        stack.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
-                    }                    
-                    stack.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
-                    if (field.left) {stack.left = field.left}
-                    if (field.top) {stack.top = field.top}
-                    if (field.width) {
-                        stack.width = field.width
+                        c = new BABYLON.GUI.ScrollViewer()
                     }
-                    if (field.height) {
-                        stack.height = field.height
-                    } else {
-                        stack.adaptHeightToChildren = true
-                    }
-                    if (field.color) {
-                        stack.color = field.color
-                    }
-                    if (field.background) {
-                        stack.background = field.background
-                    }
-                    parent.addControl(stack)
-                    this._buildControls(stack, field.c)
+                    c.type = field.type
+                    c.isVertical = true
+                    this._controlSetFieldOptions(c, field)
+                    this._controlSetAlign(c, _options)
+                    parent.addControl(c)
+                    this._buildControls(c, field.c, _options)
                     break;
                 default:
                     console.error(`[MenuSystem] Unknown type: ${field.type}`)
@@ -263,4 +238,80 @@ class MenuSystem {
         }
     }
 
+    _controlSetAlign(c, options) {
+        if (options.align == 'center') {
+            c.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER
+        } else if (options.align == 'right') {
+            c.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT
+        } else {
+            c.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+        }                    
+        if (options.valign == 'center') {
+            c.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER
+        } else if (options.valign == 'bottom') {
+            c.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM
+        } else {
+            c.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
+        }
+    }
+
+    _controlSetTextAlign(c, options) {
+        if (options.align == 'left') {
+            c.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT
+        } else if (options.align == 'right') {
+            c.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT
+        } else {
+            c.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER
+        }                    
+        if (options.valign == 'top') {
+            c.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP
+        } else if (options.valign == 'bottom') {
+            c.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM
+        } else {
+            c.textVerticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER
+        }
+    }
+
+    _controlSetTextOptions(c, options) {
+        ['fontFamily','fontSize','fontStyle','fontWeight','selectedColor','color','alpha','paddingTop','paddingBottom','paddingLeft','paddingRight'].forEach(o => {
+            if (typeof(options[o]) != 'undefined') {c[o] = options[o]}
+        })
+        if (options.shadow) {
+            c.shadowOffsetX = 1
+            c.shadowOffsetY = 1
+            c.shadowColor = "rgba(0,0,0,0.4)"
+            c.shadowBlur = 2
+        }
+    }
+
+    _controlSetFieldOptions(c, options) {
+        ['width','height','left','right','top','bottom','background','thickness','cornerRadius','back'].forEach(o => {
+            if (typeof(options[o]) != 'undefined') {c[o] = options[o]}
+        })
+    }
+
+    _controlSetEvents(c, fid) {
+        c.hoverCursor = 'pointer'
+        c.isPointerBlocker = true 
+        c.onPointerEnterObservable.add((e) => {
+            this._onevent('enter', fid,  e)
+        });
+        c.onPointerOutObservable.add((e) => {
+            this._onevent('out', fid, e)
+        })
+        c.onPointerUpObservable.add((e) => {
+            this._onevent('up', fid, e)
+        })
+    }
+
+}
+
+//hack to draw pixelated GUI images
+BABYLON.GUI.Image.prototype.__original_draw = BABYLON.GUI.Image.prototype._draw
+BABYLON.GUI.Image.prototype._draw = function (context) {
+    context.webkitImageSmoothingEnabled = !this.pixelated;
+    context.mozImageSmoothingEnabled = !this.pixelated;
+    context.msImageSmoothingEnabled = !this.pixelated;
+    context.imageSmoothingEnabled = !this.pixelated;
+    this.__original_draw(context)
 }
