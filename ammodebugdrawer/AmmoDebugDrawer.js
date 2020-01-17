@@ -1,3 +1,6 @@
+// BABYLON port of https://github.com/InfiniteLee/ammo-debug-drawer
+// by @BitOfGold
+
 AmmoDebugConstants = {
   NoDebug: 0,
   DrawWireframe: 1,
@@ -24,8 +27,6 @@ class BabylonAmmoDebugDrawer {
     constructor(scene, world, options={}) {
         this.options = options
 
-        this.debugObject = BABYLON.MeshBuilder.CreateLines("Ammo-Debug", {points: [], updatable: true}, scene)
-        this.
         this.scene = scene
         this.world = world
         this.enabled = false
@@ -51,13 +52,11 @@ class BabylonAmmoDebugDrawer {
     }
 
     enable() {
-        this.enabled = true
-        this.debugObject.setEnabled(true)
-      }
+      this.enabled = true
+    }
       
     disable()  {
       this.enabled = false
-      this.debugObject.setEnabled(false)
     }
     
     update() {
@@ -66,7 +65,17 @@ class BabylonAmmoDebugDrawer {
       }
       this.clearDebug = true
       this.world.debugDrawWorld()
-      this.debugObject = BABYLON.MeshBuilder.CreateLineSystem("Ammo-Debug", {lines: this.lines, colors: this.colors, instance: this.debugObject});
+      if (this.lines.length > 0 && this.colors.length > 0) {
+        console.log (this.lines.length, this.colors.length)
+        if (this.debugObject) {
+          this.debugObject = BABYLON.MeshBuilder.CreateLineSystem("Ammo-Debug", {lines: this.lines, colors: this.colors, instance: this.debugObject})
+        } else {
+          this.debugObject = BABYLON.MeshBuilder.CreateLineSystem("Ammo-Debug", {lines: this.lines, colors: this.colors, updatable: true}, this.scene)
+        }
+      }
+      if (this.debugObject) {
+        this.debugObject.setEnabled(this.enabled)
+      }
     }
     
     drawLine(from, to, color) {
@@ -74,29 +83,63 @@ class BabylonAmmoDebugDrawer {
           this.lines = []
           this.colors = []
           this.clearDebug = false
+          this.lidx = 0
       }
     
       if (!this.enabled) {
         return
       }
+    
+      const heap = Ammo.HEAPF32
+      const r = heap[(color + 0) / 4]
+      const g = heap[(color + 4) / 4]
+      const b = heap[(color + 8) / 4]
+      const bcolor = new BABYLON.Color4(r, g, b, 1)
 
-      var colorVector = Ammo.wrapPointer(color, Ammo.btVector3)
-      var bcolor = new BABYLON.Color4(colorVector.x(), colorVector.y(), colorVector.z(), 1)
-      var fromVector = Ammo.wrapPointer(from, Ammo.btVector3)
-      var bfrom = new BABYLON.Vector3(fromVector.x(), fromVector.y(), fromVector.z())
-      var toVector = Ammo.wrapPointer(to, Ammo.btVector3)
-      var bto = new BABYLON.Vector3(toVector.x(), toVector.y(), toVector.z())
+      const fromX = heap[(from + 0) / 4]
+      const fromY = heap[(from + 4) / 4]
+      const fromZ = heap[(from + 8) / 4]
+      const bfrom = new BABYLON.Vector3(fromX, fromY, fromZ)
+    
+      const toX = heap[(to + 0) / 4]
+      const toY = heap[(to + 4) / 4]
+      const toZ = heap[(to + 8) / 4]
+      const bto = new BABYLON.Vector3(toX, toY, toZ)
+    
+      this.lines.push([bfrom, bto])
+      this.colors.push([bcolor, bcolor])
+      
+      this.lidx++
+    }
+    
+    drawContactPoint(pointOnB, normalOnB, distance, lifeTime, color) {
+      const heap = Ammo.HEAPF32;
+      const r = heap[(color + 0) / 4];
+      const g = heap[(color + 4) / 4];
+      const b = heap[(color + 8) / 4];
+      const bcolor = new BABYLON.Color4(r, g, b, 1)
+    
+      const x = heap[(pointOnB + 0) / 4];
+      const y = heap[(pointOnB + 4) / 4];
+      const z = heap[(pointOnB + 8) / 4];
+      const bfrom = new BABYLON.Vector3(x, y, z)
+    
+      const dx = heap[(normalOnB + 0) / 4] * distance;
+      const dy = heap[(normalOnB + 4) / 4] * distance;
+      const dz = heap[(normalOnB + 8) / 4] * distance;
+      const bto = new BABYLON.Vector3(x + dx ,y + dy, z + dz)
+
       this.lines.push([bfrom, bto])
       this.colors.push([bcolor, bcolor])
     }
     
-    drawContactPoint(pointOnB, normalOnB, distance, lifeTime, color) {
-      //TODO
-      //console.log("drawContactPoint")
-    }
-    
     reportErrorWarning(warningString) {
-      console.warn(warningString);
+      if (Ammo.hasOwnProperty("Pointer_stringify")) {
+        console.warn(Ammo.Pointer_stringify(warningString))
+      } else if (!this.warnedOnce) {
+        this.warnedOnce = true
+        console.warn("Cannot print warningString, please rebuild Ammo.js using 'debug' flag")
+      }
     }
     
     draw3dText(location, textString) {
