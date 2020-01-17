@@ -53,10 +53,16 @@ class BabylonAmmoDebugDrawer {
 
     enable() {
       this.enabled = true
+      if (this.debugObject) {
+        this.debugObject.setEnabled(true)
+      }
     }
       
     disable()  {
       this.enabled = false
+      if (this.debugObject) {
+        this.debugObject.setEnabled(false)
+      }
     }
     
     update() {
@@ -66,15 +72,11 @@ class BabylonAmmoDebugDrawer {
       this.clearDebug = true
       this.world.debugDrawWorld()
       if (this.lines.length > 0 && this.colors.length > 0) {
-        console.log (this.lines.length, this.colors.length)
         if (this.debugObject) {
           this.debugObject = BABYLON.MeshBuilder.CreateLineSystem("Ammo-Debug", {lines: this.lines, colors: this.colors, instance: this.debugObject})
         } else {
           this.debugObject = BABYLON.MeshBuilder.CreateLineSystem("Ammo-Debug", {lines: this.lines, colors: this.colors, updatable: true}, this.scene)
         }
-      }
-      if (this.debugObject) {
-        this.debugObject.setEnabled(this.enabled)
       }
     }
     
